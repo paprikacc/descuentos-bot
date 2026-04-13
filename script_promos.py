@@ -1,1 +1,41 @@
-import requests\nfrom bs4 import BeautifulSoup\nimport pandas as pd\n\n# URL to scrape discounts from\nurl = 'https://promos.clash.com.ar/supermercados/'\n\ndef extract_discounts(url):\n    try:\n        # Send a request to the website\n        response = requests.get(url)\n        response.raise_for_status()  # Raise an error for bad responses\n        soup = BeautifulSoup(response.text, 'html.parser')\n\n        # Find the relevant information on the page\n        discounts = []\n        for item in soup.select('.item-class'):  # Replace with actual class name\n            commerce_name = item.select_one('.commerce-class').get_text(strip=True)  # Replace with actual class name\n            discount_value = item.select_one('.discount-class').get_text(strip=True)  # Replace with actual class name\n            # Add more fields as necessary\n            discounts.append({'commerce_name': commerce_name, 'discount_value': discount_value})\n        return discounts\n    except requests.exceptions.RequestException as e:\n        print(f'Error fetching the page: {e}')\n        return []\n\ndef save_to_excel(discounts, filename):\n    df = pd.DataFrame(discounts)\n    df.to_excel(filename, index=False)\n\nif __name__ == '__main__':\n    discounts = extract_discounts(url)\n    if discounts:\n        save_to_excel(discounts, 'promos_supermercados.xlsx')\n        print('Discounts saved to promos_supermercados.xlsx')\n    else:\n        print('No discounts found.')\n
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+from datetime import datetime
+
+# URL de la página a scrapear
+url = 'https://promos.clash.com.ar/supermercados/'
+
+try:
+    # Obtener el contenido de la página
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    
+    # Parsear el HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Extraer datos simples
+    descuentos = []
+    
+    # Buscar elementos con información de descuentos
+    for elemento in soup.find_all(['div', 'tr', 'li']):
+        texto = elemento.get_text(strip=True)
+        if 'descuento' in texto.lower() or '%' in texto:
+            descuentos.append({'Información': texto})
+    
+    # Si no encuentra datos, crear un registro vacío
+    if not descuentos:
+        descuentos.append({'Información': 'No se encontraron descuentos', 'Timestamp': datetime.now()})
+    
+    # Crear DataFrame
+    df = pd.DataFrame(descuentos)
+    
+    # Guardar en Excel
+    archivo_excel = 'promos_supermercados.xlsx'
+    df.to_excel(archivo_excel, index=False)
+    
+    print(f'✅ Descuentos guardados en {archivo_excel}')
+    print(f'Total de registros: {len(descuentos)}')
+    
+except Exception as e:
+    print(f'❌ Error: {e}')
